@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<title>Demir Kubbe Interaktif</title>
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<style>
+  body { margin:0; overflow:hidden; background:#000; color:#0f0; font-family:sans-serif; }
+  canvas { display:block; touch-action: none; }
+  .stats {
+    position:absolute; top:10px; left:10px; color:#0f0; background:rgba(0,0,0,0.5);
+    padding:8px; border-radius:4px;
+  }
+</style>
+</head>
+<body>
+<canvas id="radar"></canvas>
+<div class="stats">
+  Roket Fırlatıldı: <span id="launched">0</span><br>
+  Engellendi: <span id="intercepted">0</span>
+</div>
+<audio id="beep" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg"></audio>
+<script>
+const canvas = document.getElementById('radar');
+const ctx = canvas.getContext('2d');
+let launched = 0, intercepted = 0;
+const launchedEl = document.getElementById('launched');
+const interceptedEl = document.getElementById('intercepted');
+const beep = document.getElementById('beep');
+
+function resize(){canvas.width=innerWidth;canvas.height=innerHeight;}
+window.addEventListener('resize', resize);
+resize();
+
+const rockets = [];
+canvas.addEventListener('touchstart', e => {
+  e.preventDefault();
+  rockets.push({x:canvas.width/2, y:canvas.height, dist:canvas.height/2});
+  launched++; launchedEl.textContent = launched;
+});
+
+function draw() {
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  const cx=canvas.width/2, cy=canvas.height/2;
+  // radar circle
+  ctx.strokeStyle = 'green';
+  for(let r=50;r<cy;r+=50){
+    ctx.beginPath(); ctx.arc(cx,cy,r,0,2*Math.PI); ctx.stroke();
+  }
+  // rotating blade
+  const t = Date.now()/1000;
+  ctx.beginPath();
+  ctx.moveTo(cx,cy);
+  ctx.lineTo(cx + (cy-20)*Math.cos(t), cy + (cy-20)*Math.sin(t));
+  ctx.strokeStyle='lime'; ctx.stroke();
+
+  rockets.forEach((r,i)=>{
+    // update
+    r.dist -= 2;
+    const y = cy + r.dist * Math.cos(Math.PI/2);
+    // draw rocket
+    ctx.beginPath();
+    ctx.arc(r.x, r.y - (canvas.height - r.y) * (1 - r.dist/(canvas.height/2)), 12, 0, 2*Math.PI);
+    ctx.fillStyle = r.intercepted ? 'lime' : 'red';
+    ctx.fill();
+    if(!r.intercepted && r.dist <= 100){
+      if(Math.random() < 0.85){
+        r.intercepted = true;
+        intercepted++;
+        interceptedEl.textContent = intercepted;
+        navigator.vibrate?.(200);
+        beep.play();
+      }
+    }
+    if(r.dist <= 0 || r.intercepted){
+      rockets.splice(i,1);
+    }
+  });
+  requestAnimationFrame(draw);
+}
+draw();
+</script>
+</body>
+</html>
